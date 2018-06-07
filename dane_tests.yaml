@@ -1,0 +1,945 @@
+reference: rfc7672#section-2.2
+tests:
+  testDiscoverySecureUsableUsage2:
+    description: A "secure" TLSA RRset with at least one usable record
+    nexthop: example.org
+    mailhosts:
+      - example.org: {dane_applies: yes}
+    dns:
+      mx example.org:
+        secure: yes
+        answer: []
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testDiscoverySecureUsableUsage3:
+    description: A "secure" TLSA RRset with at least one usable record
+    nexthop: example.org
+    mailhosts:
+      - example.org: {dane_applies: yes}
+    dns:
+      mx example.org:
+        secure: yes
+        answer: []
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  3 1 1 assoc
+  testDiscoverySecureUsableWithMx:
+    description: A "secure" TLSA RRset with at least one usable record
+    nexthop: mail.example.org
+    mailhosts:
+      - example.org: {dane_applies: yes}
+    dns:
+      mx mail.example.org:
+        secure: yes
+        answer:
+          - mail.example.org. MX 10 example.org
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testDiscoverySecureUnusable:
+    description: A "secure" non-empty TLSA RRset where all the records are unusable
+    nexthop: example.org
+    mailhosts:
+      - example.org: {dane_applies: no, tls_required: yes}
+    dns:
+      mx example.org:
+        secure: yes
+        answer: []
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  0 0 1 assoc
+  testDiscoveryTlsaInsecure:
+    description: An "insecure" TLSA RRset ...
+    nexthop: example.org
+    mailhosts:
+      - example.org: {dane_applies: no, tls_required: no}
+    dns:
+      mx example.org:
+        secure: yes
+        answer: []
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+        secure: no
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testDiscoveryTlsaEmpty:
+    description: ... or DNSSEC-authenticated denial of existence of the TLSA records
+    nexthop: example.org
+    mailhosts:
+      - example.org: {dane_applies: no, tls_required: no}
+    dns:
+      mx example.org:
+        secure: yes
+        answer: []
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer: []
+  testDiscoveryTlsaNxdomain:
+    description: ... or DNSSEC-authenticated denial of existence of the TLSA records
+    nexthop: example.org
+    mailhosts:
+      - example.org: {dane_applies: no, tls_required: no}
+    dns:
+      mx example.org:
+        secure: yes
+        answer: []
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        rcode: nxdomain
+  testDiscoveryTlsaLookupError:
+    description: Lookup errors, including ..., MUST result in falling back to the next SMTP server
+    nexthop: example.org
+    mailhosts:
+      - mx10.example.org: {reachable: no}
+      - mx20.example.org: {dane_applies: yes}
+    dns:
+      mx example.org:
+        secure: yes
+        answer:
+          - example.org. MX 10 mx10.example.org.
+          - example.org. MX 20 mx20.example.org.
+      a mx10.example.org:
+        secure: yes
+        answer:
+          - mx10.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx10.example.org:
+        rcode: servfail
+      a mx20.example.org:
+        secure: yes
+        answer:
+          - mx20.example.org. A 192.0.2.20
+      tlsa _25._tcp.mx20.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx20.example.org. TLSA  2 0 1 assoc
+  testTlsaLookupErrorCnameInMx:
+    description: Lookup errors, including ..., MUST result in falling back to the next SMTP server
+    # also section-2.1.2: If any DNS queries used to locate TLSA records fail ..., then the SMTP client MUST treat that server as unreachable and MUST NOT deliver the message via that server.
+    nexthop: example.org
+    mailhosts:
+      - mx10.example.org: {reachable: no}
+      - mx20.example.org: {dane_applies: yes}
+    dns:
+      mx example.org:
+        secure: yes
+        answer:
+          - example.org. MX 10 mx10.example.org.
+          - example.org. MX 20 mx20.example.org.
+      a mx10.example.org:
+        secure: yes
+        answer:
+          - mx10.example.org. CNAME mx10b.example.org.
+          - mx10b.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx10b.example.org:
+        rcode: servfail
+      tlsa _25._tcp.mx10.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx10.example.org. TLSA  2 0 1 unused
+      a mx20.example.org:
+        secure: yes
+        answer:
+          - mx20.example.org. A 192.0.2.20
+      tlsa _25._tcp.mx20.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx20.example.org. TLSA  2 0 1 assoc
+  testDiscoveryAddressLiteral:
+    description: original next-hop destination is an address literal
+    nexthop: "[192.0.2.10]"
+    mailhosts:
+      - "[192.0.2.10]": {dane_applies: no, tls_required: no}
+  testDiscoveryMailhostAddressLiteral:
+    description: original next-hop destination is an address literal
+    mailhost: "[192.0.2.10]"
+    mailhosts:
+      - "[192.0.2.10]": {dane_applies: no, tls_required: no}
+  testDiscoveryNetworkAddressInMx:
+    description: when an MX RRset incorrectly lists a network address in lieu of an MX hostname
+    nexthop: example.org
+    mailhosts:
+      - 192.0.2.10: {dane_applies: no, tls_required: no}
+    dns:
+      mx example.org:
+        secure: yes
+        answer:
+          - example.org. MX 10 192.0.2.10.
+---
+reference: rfc7672#section-2.2.1
+tests:
+  testMxInsecure:
+    description: If the MX RRset is "insecure" and DANE TLS is not mandatory
+    nexthop: example.org
+    mailhosts:
+      - mx10.example.org:
+          dane_applies: optional
+          refids: [example.org, mx10.example.org]    # "insecure" MX redirection, the MX hostname is the only [additional?] reference identifier
+    dns:
+      mx example.org:
+        secure: no
+        answer:
+          - example.org. MX 10 mx10.example.org.
+      a mx10.example.org:
+        secure: yes
+        answer:
+          - mx10.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx10.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx10.example.org. TLSA  2 0 1 assoc
+          - _25._tcp.mx10.example.org. TLSA  2 0 1 assoc2
+  testCnameMxInsecure:
+    description: If the MX RRset is "insecure" and DANE TLS is not mandatory
+    nexthop: mail.example.org
+    mailhosts:
+      - mx10.example.org:
+          dane_applies: optional
+          refids: [mail.example.org, mx10.example.org]    # "insecure" MX redirection, the MX hostname is the only [additional] reference identifier
+    dns:
+      mx mail.example.org:
+        secure: no
+        answer:
+          - mail.example.org. CNAME example.org.
+          - example.org. MX 10 mx10.example.org.
+      a mx10.example.org:
+        secure: yes
+        answer:
+          - mx10.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx10.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx10.example.org. TLSA  2 0 1 assoc
+          - _25._tcp.mx10.example.org. TLSA  2 0 1 assoc2
+  testMxSecure:
+    description: ... if the MX RRset is not "insecure", then it is "secure"
+    nexthop: example.org
+    mailhosts:
+      - mx10.example.org: {dane_applies: no, tls_required: no}
+      - mx20.example.org: {dane_applies: yes}
+    dns:
+      mx example.org:
+        secure: yes
+        answer:
+          - example.org. MX 10 mx10.example.org.
+          - example.org. MX 10 mx20.example.org.
+      a mx10.example.org:
+        secure: yes
+        answer:
+          - mx10.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx10.example.org:
+        secure: no
+        answer:
+          - _25._tcp.mx10.example.org. TLSA  2 0 1 assoc
+      a mx20.example.org:
+        secure: yes
+        answer:
+          - mx20.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx20.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx20.example.org. TLSA  2 0 1 assoc
+  testMxSecureTlsaLookupError:
+    description: any errors during TLSA lookups MUST, ..., cause the SMTP server ... to be treated as unreachable
+    nexthop: example.org
+    mailhosts:
+      - mx10.example.org: {reachable: no}
+      - mx20.example.org: {dane_applies: yes}
+    dns:
+      mx example.org:
+        secure: yes
+        answer:
+          - example.org. MX 10 mx10.example.org.
+          - example.org. MX 10 mx20.example.org.
+      a mx10.example.org:
+        secure: yes
+        answer:
+          - mx10.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx10.example.org:
+        secure: yes
+        rcode: servfail
+      a mx20.example.org:
+        secure: yes
+        answer:
+          - mx20.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx20.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx20.example.org. TLSA  2 0 1 assoc
+  testMxSecureTlsaLookupErrorAllFail:
+    description: any errors during TLSA lookups MUST, ..., cause the SMTP server ... to be treated as unreachable
+    nexthop: example.org
+    mailhosts:
+        - mx10.example.org: {reachable: no}
+        - mx20.example.org: {reachable: no}
+    dns:
+      mx example.org:
+        secure: yes
+        answer:
+          - example.org. MX 10 mx10.example.org.
+          - example.org. MX 10 mx20.example.org.
+      a mx10.example.org:
+        secure: yes
+        answer:
+          - mx10.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx10.example.org:
+        secure: yes
+        rcode: servfail
+      a mx20.example.org:
+        secure: yes
+        answer:
+          - mx20.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx20.example.org:
+        secure: yes
+        rcode: servfail
+  testNexthopCnameAInsecureCnameSecureTlsaLookupError:
+    description: any errors during TLSA lookups MUST, ..., cause the SMTP server ... to be treated as unreachable
+    nexthop: mail.example.org
+    mailhosts:
+      - mx10.example.org: {reachable: no}
+      - mx20.example.org: {dane_applies: yes}
+    dns:
+      mx mail.example.org:
+        secure: yes
+        answer:
+          - mail.example.org. MX 10 mx10.example.org
+          - mail.example.org. MX 20 mx20.example.org
+      a mx10.example.org:
+        secure: no
+        answer:
+          - mx10.example.org. CNAME mx10b.example.org
+          - mx10b.example.org. A 192.0.2.10
+      cname mx10.example.org:
+        secure: yes
+        answer:
+          - mx10.example.org. CNAME mx10b.example.org
+      tlsa _25._tcp.mx10.example.org:
+        secure: no
+        rcode: servfail
+      a mx20.example.org:
+        secure: yes
+        answer:
+          - mx20.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx20.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx20.example.org. TLSA  2 0 1 assoc
+  testMailhostCnameAInsecureCnameSecureTlsaLookupError:
+    description: any errors during TLSA lookups MUST, ..., cause the SMTP server ... to be treated as unreachable
+    mailhost: mail.example.org
+    mailhosts:
+        - mail.example.org: {reachable: no}
+    dns:
+      a mail.example.org:
+        secure: no
+        answer:
+          - mail.example.org. CNAME example.org
+          - example.org. A 192.0.2.10
+      cname mail.example.org:
+        secure: yes
+        answer:
+          - mail.example.org. CNAME example.org
+      tlsa _25._tcp.mail.example.org:
+        secure: no
+        rcode: servfail
+---
+reference: rfc7672#section-2.2.2
+tests:
+  testMailhostASecure:
+    mailhost: example.org
+    mailhosts:
+      - example.org:
+          dane_applies: yes
+          sni: example.org
+          refids: [example.org]
+    dns:
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      aaaa example.org:
+        secure: yes
+        answer: []
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostAaaaSecure:
+    mailhost: example.org
+    mailhosts:
+      - example.org:
+          dane_applies: yes
+          sni: example.org
+          refids: [example.org]
+    dns:
+      a example.org:
+        secure: yes
+        answer: []
+      aaaa example.org:
+        secure: yes
+        answer:
+          - example.org. AAAA 2001::10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostASecureTlsaInsecure:
+    description: If no "secure" TLSA records are found, DANE TLS is not applicable
+    mailhost: example.org
+    mailhosts:
+      - example.org: {dane_applies: no}
+    dns:
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      aaaa example.org:
+        secure: yes
+        answer: []
+      tlsa _25._tcp.example.org:
+        secure: no
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostAaaaSecureTlsaInsecure:
+    description: If no "secure" TLSA records are found, DANE TLS is not applicable
+    mailhost: example.org
+    mailhosts:
+      - example.org: {dane_applies: no}
+    dns:
+      a example.org:
+        secure: yes
+        answer: []
+      aaaa example.org:
+        secure: yes
+        answer:
+          - example.org. AAAA 2001::10
+      tlsa _25._tcp.example.org:
+        secure: no
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostAInsecureAaaaInsecure:
+    description: If address records are found but the DNSSEC validation status of the first query response is "insecure" ..., the SMTP client SHOULD NOT ... to search for ... TLSA records.
+    mailhost: example.org
+    mailhosts:
+      - example.org: {dane_applies: no}
+    dns:
+      a example.org:
+        secure: no
+        answer:
+          - example.org. A 192.0.2.10
+      aaaa example.org:
+        secure: no
+        answer:
+          - example.org. AAAA 2001::10
+  testMailhostASecureExistenceAaaaInsecureNonexistence:
+    description: this can happen with "unwise" use of NSEC3 opt-out
+    mailhost: example.org
+    mailhosts:
+      - example.org:
+          dane_applies: yes
+          sni: example.org
+          refids: [example.org]
+          ips: ["192.0.2.10"]
+    dns:
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      aaaa example.org:
+        secure: no
+        answer: []
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostAInsecureNonExistenceAaaaSecureExistence:
+    description: this can happen with "unwise" use of NSEC3 opt-out
+    mailhost: example.org
+    mailhosts:
+      - example.org:
+          dane_applies: yes
+          sni: example.org
+          refids: [example.org]
+          ips: ["2001::10"]
+    dns:
+      a example.org:
+        secure: no
+        answer: []
+      aaaa example.org:
+        secure: yes
+        answer:
+          - example.org. AAAA 2001::10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostASecureExistenceAaaaInsecureExistence:
+    description: inconsistent results -- maybe cached at different times as zone is transitioning to/from being signed?
+    mailhost: example.org
+    mailhosts:
+      - example.org:
+          dane_applies: yes
+          sni: example.org
+          refids: [example.org]
+          # it seems ok to use all IPs, secure or not, since we'll check the certificate anyway
+          ips: ["192.0.2.10", "2001::10"]
+    dns:
+      a example.org:
+        secure: yes
+        answer:
+          - example.org. A 192.0.2.10
+      aaaa example.org:
+        secure: no
+        answer:
+          - example.org. AAAA 2001::10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostAInsecureExistenceAaaaSecureExistence:
+    description: inconsistent results -- maybe cached at different times as zone is transitioning to/from being signed?
+    mailhost: example.org
+    mailhosts:
+      - example.org:
+          dane_applies: yes
+          sni: example.org
+          refids: [example.org]
+          # it seems ok to use all IPs, secure or not, since we'll check the certificate anyway
+          ips: ["192.0.2.10", "2001::10"]
+    dns:
+      a example.org:
+        secure: no
+        answer:
+          - example.org. A 192.0.2.10
+      aaaa example.org:
+        secure: yes
+        answer:
+          - example.org. AAAA 2001::10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostCnameAInsecureCnameInsecure:
+    description: The input domain is a CNAME alias, but the ultimate network address RRset is "insecure" .... If the initial CNAME response is also "insecure", DANE TLS does not apply.
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org: {dane_applies: no}
+    dns:
+      a mail.example.org:
+        secure: no
+        answer:
+          - mail.example.org. CNAME example.org
+          - example.org. A 192.0.2.10
+      aaaa mail.example.org:
+        secure: no
+        answer:
+          - mail.example.org. CNAME example.org
+      cname mail.example.org:
+        secure: no
+        answer:
+          - mail.example.org. CNAME example.org
+  testMailhostCnameAInsecureCnameSecure:
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: mail.example.org
+          refids: [mail.example.org]
+          ips: ["192.0.2.10"]
+    dns:
+      a mail.example.org:
+        secure: no
+        answer:
+          - mail.example.org. CNAME example.org
+          - example.org. A 192.0.2.10
+      aaaa mail.example.org:
+        secure: no
+        answer:
+          - mail.example.org. CNAME example.org
+      cname mail.example.org:
+        secure: yes
+        answer:
+          - mail.example.org. CNAME example.org
+      tlsa _25._tcp.mail.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mail.example.org. TLSA  2 0 1 assoc
+  testMailhostCnameASecure:
+    description: The input domain is a CNAME alias, and the ultimate network address RRset is "secure"
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: example.org
+          refids: [mail.example.org, example.org]
+    dns:
+      a mail.example.org:
+        secure: yes
+        answer:
+          - mail.example.org. CNAME example.org
+          - example.org. A 192.0.2.10
+      aaaa mail.example.org:
+        secure: yes
+        answer:
+          - mail.example.org. CNAME example.org
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+  testMailhostCnameAaaaSecure:
+    description: The input domain is a CNAME alias, and the ultimate network address RRset is "secure"
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: example.org
+          refids: [mail.example.org, example.org]
+    dns:
+      a mail.example.org:
+        secure: yes
+        answer:
+          - mail.example.org. CNAME example.org
+      aaaa mail.example.org:
+        secure: yes
+        answer:
+          - mail.example.org. CNAME example.org
+          - example.org. AAAA 2001::10
+      tlsa _25._tcp.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.example.org. TLSA  2 0 1 assoc
+---
+reference: rfc7672#section-2.2.3
+tests:
+  testMailhostNonStandardPort:
+    mailhost: mail.example.org:9999
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: mail.example.org
+          refIds: [mail.example.org]
+    dns:
+      a mail.example.org:
+          secure: yes
+          answer:
+              - mail.example.org. A 192.0.2.10
+      tlsa _9999._tcp.mail.example.org:
+          secure: yes
+          answer:
+              - _9999._tcp.mail.example.org. TLSA  2 0 1 assoc
+              - _9999._tcp.mail.example.org. TLSA  2 0 1 assoc2
+  testMailhostCnameSecureFirstTlsaInsecure:
+    description: If any "insecure" records are encountered ..., the next candidate TLSA base domain is tried instead.
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: mail.example.org
+          refIds: [mail.example.org]
+          tlsa_records: [assoc2, assoc3]
+    dns:
+      a mail.example.org:
+          secure: yes
+          answer:
+              - mail.example.org. CNAME example.org.
+              - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+          secure: no
+          answer:
+              - _25._tcp.example.org. TLSA  2 0 1 assoc
+      tlsa _25._tcp.mail.example.org:
+          secure: yes
+          answer:
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc2
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc3
+  testMailhostCnameSecureFirstTlsaNxdomainInsecure:
+    description: If ... or the TLSA records don't exist, the next candidate TLSA base domain is tried instead.
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: mail.example.org
+          refIds: [mail.example.org]
+          tlsa_records: [assoc2, assoc3]
+    dns:
+      a mail.example.org:
+          secure: yes
+          answer:
+              - mail.example.org. CNAME example.org.
+              - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+          secure: no
+          rcode: nxdomain
+      tlsa _25._tcp.mail.example.org:
+          secure: yes
+          answer:
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc2
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc3
+  testMailhostCnameSecureFirstTlsaEmptyInsecure:
+    description: If ... or the TLSA records don't exist, the next candidate TLSA base domain is tried instead.
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: mail.example.org
+          refIds: [mail.example.org]
+          tlsa_records: [assoc2, assoc3]
+    dns:
+      a mail.example.org:
+          secure: yes
+          answer:
+              - mail.example.org. CNAME example.org.
+              - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+          secure: no
+          answer: []
+      tlsa _25._tcp.mail.example.org:
+          secure: yes
+          answer:
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc2
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc3
+  testMailhostCnameSecureFirstTlsaNxdomainSecure:
+    description: If ... or the TLSA records don't exist, the next candidate TLSA base domain is tried instead.
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: mail.example.org
+          refIds: [mail.example.org]
+          tlsa_records: [assoc2, assoc3]
+    dns:
+      a mail.example.org:
+          secure: yes
+          answer:
+              - mail.example.org. CNAME example.org.
+              - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+          secure: yes
+          rcode: nxdomain
+      tlsa _25._tcp.mail.example.org:
+          secure: yes
+          answer:
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc2
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc3
+  testMailhostCnameSecureFirstTlsaEmptySecure:
+    description: If ... or the TLSA records don't exist, the next candidate TLSA base domain is tried instead.
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org:
+          dane_applies: yes
+          sni: mail.example.org
+          refIds: [mail.example.org]
+          tlsa_records: [assoc2, assoc3]
+    dns:
+      a mail.example.org:
+          secure: yes
+          answer:
+              - mail.example.org. CNAME example.org.
+              - example.org. A 192.0.2.10
+      tlsa _25._tcp.example.org:
+          secure: yes
+          answer: []
+      tlsa _25._tcp.mail.example.org:
+          secure: yes
+          answer:
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc2
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc3
+  testMailhostNoSecureTlsaFound:
+    description: If none of the candidate TLSA base domains yield "secure" TLSA records, then the SMTP client is free to use pre-DANE opportunistic TLS
+    mailhost: mail.example.org
+    mailhosts:
+      - mail.example.org: {dane_applies: no}
+    dns:
+      a mail.example.org:
+          secure: yes
+          answer:
+              - mail.example.org. A 192.0.2.10
+      tlsa _25._tcp.mail.example.org:
+          secure: no
+          answer:
+              - _25._tcp.mail.example.org. TLSA  2 0 1 assoc
+  testMailhostCnameInTlsaResponse:
+    description: TLSA record publishers may leverage CNAMEs to reference a single authoritative TLSA RRset ...
+    nexthop: example.org
+    mailhosts:
+      - mx10.example.org:
+          dane_applies: yes
+          sni: mx10.example.org
+          refIds: [mx10.example.org, example.org]
+    dns:
+      mx example.org:
+          secure: yes
+          answer:
+              - example.org. MX 10 mx10.example.org.
+      a mx10.example.org:
+          secure: yes
+          answer:
+              - mx10.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx10.example.org:
+          secure: yes
+          answer:
+              - _25._tcp.mx10.example.org.             CNAME wildcard._dane.example.org
+              - wildcard._dane.example.org.            TLSA  2 0 1 assoc
+  testSharedTrustAnchor:
+    descrition: A better example, employing a shared trust anchor ...
+    nexthop: example.com
+    mailhosts:
+      - mx1.example.org:
+          dane_applies: yes
+          sni: mx1.example.org
+          refIds: [mx1.example.org, example.com]
+      - mx2.example.org:
+          dane_applies: yes
+          sni: mx2.example.org
+          refIds: [mx2.example.org, example.com]
+    dns:
+      mx example.com:
+          secure: yes
+          answer:
+              - example.com.                MX 0 mx1.example.org.
+              - example.com.                MX 0 mx2.example.org.
+      a mx1.example.org:
+          secure: yes
+          answer:
+              - mx1.example.org. A 192.0.2.10
+      tlsa _25._tcp.mx1.example.org:
+          secure: yes
+          answer:
+              - _25._tcp.mx1.example.org.             CNAME tlsa201._dane.example.com.
+              - tlsa201._dane.example.com.            TLSA  2 0 1 assoc
+      a mx2.example.org:
+          secure: yes
+          answer:
+              - mx2.example.org. A 192.0.2.20
+      tlsa _25._tcp.mx2.example.org:
+          secure: yes
+          answer:
+              - _25._tcp.mx2.example.org.             CNAME tlsa201._dane.example.com.
+              - tlsa201._dane.example.com.            TLSA  2 0 1 assoc
+---
+reference: rfc7672#section-3.2.2
+tests:
+  testNameChecksExample:
+    nexthop: exchange.example.org
+    mailhosts:
+      - mx10.example.com:
+          dane_applies: yes
+          sni: mx10.example.com
+          refids: [exchange.example.org, example.com, mx10.example.com]
+      - mx15.example.com:
+          dane_applies: yes
+          sni: mx15.example.com
+          refids: [exchange.example.org, example.com, mx15.example.com]
+      - mx20.example.com:
+          dane_applies: yes
+          sni: mxbackup.example.net
+          refids: [exchange.example.org, example.com, mxbackup.example.net]
+    dns:
+      mx exchange.example.org:
+        secure: yes
+        answer:
+          - exchange.example.org.             CNAME mail.example.org.
+          - mail.example.org.                 CNAME example.com.
+          - example.com.                      MX    10 mx10.example.com.
+          - example.com.                      MX    15 mx15.example.com.
+          - example.com.                      MX    20 mx20.example.com.
+      a mx10.example.com:
+        secure: yes
+        answer:
+          - mx10.example.com.                 A 192.0.2.10
+      tlsa _25._tcp.mx10.example.com:
+        secure: yes
+        answer:
+          - _25._tcp.mx10.example.com.        TLSA  2 0 1 mx10
+      a mx15.example.com:
+        secure: yes
+        answer:
+          - mx15.example.com.                 CNAME mxbackup.example.com.
+          - mxbackup.example.com.             A     192.0.2.15
+      tlsa _25._tcp.mxbackup.example.com:
+        secure: yes
+        rcode: nxdomain
+      tlsa _25._tcp.mx15.example.com:
+        secure: yes
+        answer:
+          - _25._tcp.mx15.example.com. TLSA  2 0 1 mx15
+      a mx20.example.com:
+        secure: yes
+        answer:
+          - mx20.example.com.                CNAME mxbackup.example.net.
+          - mxbackup.example.net.            A     198.51.100.20
+      tlsa _25._tcp.mxbackup.example.net:
+        secure: yes
+        answer:
+          - _25._tcp.mxbackup.example.net.   TLSA  2 0 1 mxbackup
+---
+tests:
+  testNoAdditionalsUsed:
+    description: additional records aren't secured by DNSSEC
+    nexthop: example.org
+    mailhosts:
+      - mx1.example.org:
+          dane_applies: no
+          ips: [192.0.2.1]
+      - mx2.example.org:
+          dane_applies: yes
+          sni: mx2.example.org
+          refids: [mx2.example.org, example.org]
+          tlsa_records: [mx2]
+    dns:
+      mx example.org:
+        secure: yes
+        answer:
+          - example.org MX 10 mx1.example.org.
+          - example.org MX 20 mx2.example.org.
+        additional:
+          - mx1.example.org. A 192.0.0.1
+          - _25._tcp.mx2.example.org. TLSA  2 0 1 dontUseMe
+      a mx1.example.org:
+        secure: yes
+        answer:
+          - mx1.example.org. A 192.0.2.1
+      tlsa _25._tcp.mx1.example.org:
+        secure: yes
+        answer: []
+      a mx2.example.org:
+        secure: yes
+        answer:
+          - mx2.example.org. A 192.0.2.2
+        additional:
+          - _25._tcp.mx2.example.org. TLSA  2 0 1 dontUseMeEither
+      tlsa _25._tcp.mx2.example.org:
+        secure: yes
+        answer:
+          - _25._tcp.mx2.example.org. TLSA  2 0 1 mx2
